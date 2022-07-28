@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { ReactDOM } from "react";
 import { ConnectButton, ConnectDialog, Connect2ICProvider, useConnect } from "@connect2ic/react"
 import "@connect2ic/core/style.css"
@@ -10,16 +10,23 @@ const App = () => {
 
     const { isConnected, principal, activeProvider } = useConnect({
         onConnect: () => {
-            console.log(principal);
+            console.log("Connected");
         },
         onDisconnect: () => {
-            console.log(principal);
+            console.log("Disconnected");
         }
     })
 
     const API = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweEM1MGMyNzE3MjZiNzBERGM0OTE3MDVCZUExNTQ4MGVhNEMzQjc5NDkiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2NTg5Nzc4MDUzMjYsIm5hbWUiOiJ0ZXN0X3Rva2VuIn0.pjPPLiFMyzAOfZ-Y5TQ_I40IAjrRYAjj3Z9eY_EtG7E"
 
-    const web3Client = new Web3Storage({ token:API })
+    const web3Client = new Web3Storage({ token: API })
+    useEffect(() => {
+        const fetchImages = async () => {
+            setImages(await web3Client.list())
+            console.log(images);
+        }
+        fetchImages()
+    }, [])
     const fileInput = document.querySelector('input[type="file"]')
 
     async function putFile() {
@@ -45,7 +52,7 @@ const App = () => {
         const input = document.querySelector("#cid").value
         const res = await web3Client.get(input)
         const files = await res.files()
-        for(const file of files) {
+        for (const file of files) {
             console.log(`${file.cid}, ${file.name}, ${file.size}`)
         }
     }
@@ -55,16 +62,36 @@ const App = () => {
         console.log(isAnonymous);
     }
 
+    async function getIdentity() {
+        const isConnected = await window.ic.plug.isConnected();
+        if (isConnected) {
+            let sessionData = await window.ic.plug.sessionManager.sessionData
+            console.log(sessionData.principalId);
+        } else {
+            console.log("Not connected to PlugWallet");
+        }
+    }
+
+    async function getImages() {
+        for await (const upload of web3Client.list()) {
+            console.log(`${upload.name} - cid: ${upload.cid} - size: ${upload.dagSize}`)
+        }
+    }
+
 
     return (
         <div>
             <input type="file" name="file" id="file" />
             <input type="text" name="" id="cid" />
             <button onClick={putFile}>Put file</button>
-            <button onClick={getFile}>Get files</button>
+            <button onClick={getFile}>Get file with cid</button>
             <button onClick={checkIfAnonymous}>Anonymous?</button>
+            <button onClick={getIdentity}>Get identity</button>
             <ConnectButton />
             <ConnectDialog />
+            <button onClick={getImages}>Get images</button>
+
+
         </div>
     )
 }
