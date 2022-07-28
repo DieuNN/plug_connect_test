@@ -1,5 +1,6 @@
+import Principal "mo:base/Principal";
 actor {
-  public func greet(name : Text) : async Text {
-    return "Hello, " # name # "!";
+  public shared({caller}) func isAnonymous() : async Bool {
+    return Principal.isAnonymous(caller);
   };
 };
