@@ -8,30 +8,44 @@ import { Link } from "../../../node_modules/react-router-dom/index";
 
 const App = () => {
 
+    const [connected, setConnected] = useState(false);
+    const [choosedImage, setChoosedImage] = useState("");
+    const [principalId, setPrincipalId] = useState("")
+
     const { isConnected, principal, activeProvider } = useConnect({
         onConnect: () => {
             console.log("Connected");
+            (async function() {
+                let sessionData = await window.ic.plug.sessionManager.sessionData
+                setPrincipalId(sessionData.principalId)
+            }())
             setConnected(true);
         },
         onDisconnect: () => {
             console.log("Disconnected");
             setConnected(false);
+            setPrincipalId("")
         }
     })
 
-    const [connected, setConnected] = useState(false);
-    const [choosedImage, setChoosedImage] = useState("");
+
 
     const API = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweEM1MGMyNzE3MjZiNzBERGM0OTE3MDVCZUExNTQ4MGVhNEMzQjc5NDkiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2NTg5Nzc4MDUzMjYsIm5hbWUiOiJ0ZXN0X3Rva2VuIn0.pjPPLiFMyzAOfZ-Y5TQ_I40IAjrRYAjj3Z9eY_EtG7E"
 
     const web3Client = new Web3Storage({ token: API })
-    // useEffect(() => {
-    //     const fetchImages = async () => {
-    //         setImages(await web3Client.list())
-    //         console.log(images);
-    //     }
-    //     fetchImages()
-    // }, [])
+    useEffect(() => {
+        const initPrincipalId = async () => {
+            const isConnected = await window.ic.plug.isConnected();
+            if (isConnected) {
+                let sessionData = await window.ic.plug.sessionManager.sessionData
+                setPrincipalId(sessionData.principalId)
+                console.log(sessionData.principalId);
+            } else {
+                console.log("Not connected to PlugWallet");
+            }
+        }
+        initPrincipalId()
+    }, [])
 
     const fileInput = document.querySelector('input[type="file"]')
 
@@ -80,6 +94,7 @@ const App = () => {
     const [img, setImg] = useState([])
 
     async function getImages() {
+        setImg([]);
         for await (const upload of web3Client.list()) {
             let files = await web3Client.get(upload.cid);
 
@@ -95,33 +110,72 @@ const App = () => {
         let link = ""
     }
 
+    async function getAllUsers() {
+        const users = await connect_plug_backend.getAllUsers()
+        console.log(users);
+    }
+
+    async function registerUser() {
+        const principalId = await window.ic.plug.sessionManager.sessionData.principalId
+        const registerResult = await connect_plug_backend.createUser(principalId)
+        console.log(registerResult);
+    }
+
+    async function mintNft() {
+        let tokenMetadata =document.querySelector("#principal").value
+
+        if(tokenMetadata.length === 0) {
+            console.log("No input");
+            return;
+        }
+        const principalId = await window.ic.plug.sessionManager.sessionData.principalId
+        const mintResult = await connect_plug_backend.mintNft(principalId, {tokenUri : tokenMetadata});
+        console.log(mintResult);
+    }
+
+    async function getAllNFTs() {
+        const NFTs = await connect_plug_backend.getAllNFTs()
+        console.log(NFTs);
+    }
+
+    async function getAllNFTOfUser() {
+        const principalId = await window.ic.plug.sessionManager.sessionData.principalId
+        const NFTs = await connect_plug_backend.getNFTOfUser(principalId)
+        console.log(NFTs);
+    }
+
     return (
         <div>
+            <p>My identity is {principalId}</p>
             <input type="file" name="file" id="file" />
             <input type="text" name="" id="cid" />
             <button onClick={putFile} disabled={!connected}>Put file</button>
-            <button onClick={getFile} disabled={!connected}>Get file with cid</button>
-            <button onClick={checkIfAnonymous}>Anonymous?</button>
             <button onClick={getIdentity}>Get identity</button>
             <ConnectButton />
             <ConnectDialog />
             <button onClick={getImages}>Get images</button>
             <button onClick={() => {
                 console.log(img);
-            }}>Reload image array</button>
+            }}>Get image array</button>
 
             {img.map((item, index) => {
                 return <>
-                    {/* <a> <Link to={item}> <img src={item} alt="" /> </Link></a> */}
-                    <img src={item} alt="" onClick={()=> {
+                    <span onClick={()=> {
                         setChoosedImage(item);
                         console.log(choosedImage + " at index " + index);
-                    }} />
+                    }}>
+                    <img src={item} alt=""  />
+                    <p>{item}</p>
+                    </span>
+                    
                 </>
             })}
-            <button onClick={mint}>Mint</button>
-
-
+            <button onClick={getAllUsers}>Get all users</button>
+            <button onClick={registerUser} disabled={!connected}>Register user</button>
+            <input type="text" name="" id="principal" />
+            <button onClick={mintNft}>Mint</button>
+            <button onClick={getAllNFTs}>Get all NFTs</button>
+            <button onClick={getAllNFTOfUser} disabled={!connected}>Get all NFT of user</button>
         </div>
     )
 }
