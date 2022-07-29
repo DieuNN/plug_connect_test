@@ -9,6 +9,7 @@ import React from "react";
 import { ReactDOM } from "react";
 import { PlugWallet } from "@connect2ic/core/providers";
 import { InternetIdentity } from "@connect2ic/core/providers";
+import { BrowserRouter } from "../../../node_modules/react-router-dom/index";
 
 
 const client = createClient({
@@ -26,9 +27,13 @@ const client = createClient({
 
 const AppRoot = () => {
   return (
+
     <Connect2ICProvider client={client} >
+      <BrowserRouter>
       <App />
+      </BrowserRouter>
     </Connect2ICProvider>
+  
   )
 };
 
