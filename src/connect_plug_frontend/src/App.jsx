@@ -9,7 +9,7 @@ import { Link } from "../../../node_modules/react-router-dom/index";
 const App = () => {
 
     const [connected, setConnected] = useState(false);
-    const [choosedImage, setChoosedImage] = useState("");
+    var choosedImage = "";
     const [principalId, setPrincipalId] = useState("")
 
     const { isConnected, principal, activeProvider } = useConnect({
@@ -106,8 +106,8 @@ const App = () => {
         }
     }
 
-    async function mint() {
-        let link = ""
+    async function changeChoosedImage() {
+
     }
 
     async function getAllUsers() {
@@ -144,6 +144,15 @@ const App = () => {
         console.log(NFTs);
     }
 
+    async function transfer() {
+        let myPrincipal = await window.ic.plug.sessionManager.sessionData.principalId
+        let toPrincipal = document.querySelector("#toPrincipal").value
+        let tokenMetadata = document.querySelector("#tokenMetadata").value;
+
+        let transferResult = await connect_plug_backend.transfer(myPrincipal, toPrincipal, {tokenUri : tokenMetadata})
+        console.log(transferResult);
+    }
+
     return (
         <div>
             <p>My identity is {principalId}</p>
@@ -158,21 +167,21 @@ const App = () => {
                 console.log(img);
             }}>Get image array</button>
 
-            {img.map((item, index) => {
+            {img.map((item) => {
                 return <>
-                    <span onClick={()=> {
-                        setChoosedImage(item);
-                        console.log(choosedImage + " at index " + index);
-                    }}>
-                    <img src={item} alt=""  />
+                    <img src={item} alt=""  onClick={()=> {
+                        choosedImage = item;
+                        console.log(choosedImage);
+                    }} />
                     <p>{item}</p>
-                    </span>
                     
                 </>
             })}
-            <button onClick={getAllUsers}>Get all users</button>
             <button onClick={registerUser} disabled={!connected}>Register user</button>
             <input type="text" name="" id="principal" />
+            <input type="text" name="" id="tokenMetadata" placeholder="Token metadata" />
+            <input type="text" name="" id="toPrincipal" placeholder="To principal" />
+            <button onClick={transfer}>Transfer</button>
             <button onClick={mintNft}>Mint</button>
             <button onClick={getAllNFTs}>Get all NFTs</button>
             <button onClick={getAllNFTOfUser} disabled={!connected}>Get all NFT of user</button>

@@ -4,7 +4,7 @@ import TrieSet "mo:base/TrieSet";
 module {
     public type UserInfo = {
         principal : Principal;
-        var tokens : TrieSet.Set<Nat>;
+        var tokens : TrieSet.Set<Nat>;  
     };
 
     public type TokenMetadata = {

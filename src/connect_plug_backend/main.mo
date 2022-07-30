@@ -1,4 +1,5 @@
 import Array "mo:base/Array";
+import Debug "mo:base/Debug";
 import Hash "mo:base/Hash";
 import HashMap "mo:base/HashMap";
 import Iter "mo:base/Iter";
@@ -7,8 +8,10 @@ import Option "mo:base/Option";
 import Prelude "mo:base/Prelude";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
+import Text "mo:base/Text";
 import Time "mo:base/Time";
 import TrieSet "mo:base/TrieSet";
+
 import Types "Types";
 
 actor {
@@ -117,6 +120,102 @@ actor {
         };
 
         return result;
+    };
+
+    private func _getTokenIdFromTokenMetadata(tokenMetadata : Types.TokenMetadata) :  ?Nat {
+        for(element in _tokens.vals()) {
+            if(Text.equal(element.metadata.tokenUri, tokenMetadata.tokenUri)) {
+                return ?element.index;
+            }
+        };
+        return null;
+    };
+
+    public func transfer(from : Text, to : Text, tokenMetadata : Types.TokenMetadata) : async Result.Result<Text, Text> {
+        let tokenId = _getTokenIdFromTokenMetadata(tokenMetadata);
+        
+        switch(tokenId) {
+          case null {
+            return#err("Token doesn't exist!");
+          }; 
+          case (?_tokenId) {
+            // Debug.print(Nat.toText(_tokenId));
+            if(not _isOwner(Principal.fromText(from),_tokenId)) {
+                return#err(tokenMetadata.tokenUri # " is not belong to " # from);
+            };
+            _removeTokenFrom(Principal.fromText(from), _tokenId);
+            _addTokenTo(Principal.fromText(to), _tokenId);
+          };
+        };
+
+        return #ok("OK");
+    };
+
+    private func _removeTokenFrom(owner : Principal, tokenId : Nat) {
+        assert (_isTokenExist(tokenId) and _isOwner(owner, tokenId));
+        switch(_users.get(owner)) {
+            case (?user) {
+                // user.tokens := TrieSet.delete(user.tokens, tokenId, Hash.hash(tokenId), Nat.equal);
+                // for(element in TrieSet.toArray(user.tokens).vals()) {
+                //     Debug.print(Nat.toText(element));
+                // };
+                var userTokensArray : [Nat] = TrieSet.toArray(user.tokens);
+                userTokensArray := Array.filter(userTokensArray, func(element : Nat) : Bool {
+                    element != tokenId;
+                });
+                for(element in userTokensArray.vals()) {
+                    Debug.print(Nat.toText(element));
+                };
+                user.tokens := TrieSet.fromArray<Nat>(userTokensArray, Hash.hash, Nat.equal);
+                let tempUser : Types.UserInfo = {
+                    principal = user.principal;
+                    var tokens = TrieSet.fromArray<Nat>(userTokensArray, Hash.hash, Nat.equal);
+                };
+                _users.put(owner, tempUser);
+                Debug.print(Nat.toText(tokenId) # " removed from " # Principal.toText(user.principal));
+
+                assert(true);           
+                };
+            case null {
+                assert(false);
+            };
+        };
+    };
+
+
+
+    private func _isTokenExist(tokenId : Nat) : Bool {
+        let token = _tokens.get(tokenId);
+        switch(token) {
+            case null {
+                return false;
+            };
+            case (?any) {
+                return true;
+            };
+        }
+    };
+
+    private func _ownerOf(tokenId : Nat) : ?Principal {
+        switch(_tokens.get(tokenId)) {
+            case (null) {
+                return null;
+            };
+            case (?info) {
+                return ?info.owner;
+            };
+        };
+    };
+
+    private func _isOwner(p : Principal, tokenId: Nat) : Bool {
+        switch(_tokens.get(tokenId)) {
+            case null {
+                return false;
+            };
+            case (?info) {
+                return Principal.equal(info.owner, p);
+            };
+        };
     };
 
     system func preupgrade() {
