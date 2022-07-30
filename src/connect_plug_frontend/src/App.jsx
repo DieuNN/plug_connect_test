@@ -185,6 +185,7 @@ const App = () => {
             <button onClick={mintNft}>Mint</button>
             <button onClick={getAllNFTs}>Get all NFTs</button>
             <button onClick={getAllNFTOfUser} disabled={!connected}>Get all NFT of user</button>
+            
         </div>
     )
 }

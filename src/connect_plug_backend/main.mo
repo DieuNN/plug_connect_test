@@ -11,7 +11,6 @@ import Result "mo:base/Result";
 import Text "mo:base/Text";
 import Time "mo:base/Time";
 import TrieSet "mo:base/TrieSet";
-
 import Types "Types";
 
 actor {
@@ -31,9 +30,7 @@ actor {
     private func _addTokenTo(to : Principal, tokenId : Nat) {
         switch(_users.get(to)) {
             case null {
-                let user = _newUser(to);
-                user.tokens := TrieSet.put(user.tokens, tokenId, Hash.hash(tokenId), Nat.equal);
-                _users.put(to, user);
+                return;
             };
             case (?user) {
                 user.tokens := TrieSet.put(user.tokens, tokenId, Hash.hash(tokenId), Nat.equal);
@@ -116,7 +113,6 @@ actor {
             if(Principal.equal(Option.unwrap(token).owner, Principal.fromText(p))) {
                 result := Array.append<Types.TokenInfoExt>(result, [_toTokenInfoExt(Option.unwrap(token))]);
             }
-            
         };
 
         return result;
@@ -131,30 +127,69 @@ actor {
         return null;
     };
 
+    private func _deleteTokenFrom(from : Principal, tokenId : Nat) {
+        let user = _users.get(from);
+        switch(user) {
+            case null {
+                return;
+            };
+            case (?_user) {
+                _user.tokens := TrieSet.delete(_user.tokens, tokenId, Hash.hash(tokenId), Nat.equal);
+                _users.put(from, _user);
+            };
+        };
+    };
+
+    private func _changeTokensOwnerInfo(to : Principal, tokenId : Nat ) {
+        let token = _tokens.get(tokenId);
+        switch(token) {
+            case null {
+                return;
+            };
+            case (?_token) {
+                _token.owner := to;
+                _tokens.put(tokenId, _token);
+            };
+        };
+    };
+
     public func transfer(from : Text, to : Text, tokenMetadata : Types.TokenMetadata) : async Result.Result<Text, Text> {
         let tokenId = _getTokenIdFromTokenMetadata(tokenMetadata);
         
         switch(tokenId) {
-          case null {
-            return#err("Token doesn't exist!");
-          }; 
-          case (?_tokenId) {
-            // Debug.print(Nat.toText(_tokenId));
-            if(not _isOwner(Principal.fromText(from),_tokenId)) {
-                return#err(tokenMetadata.tokenUri # " is not belong to " # from);
+            case null {
+                return#err("Token not found");
             };
-            _removeTokenFrom(Principal.fromText(from), _tokenId);
-            _addTokenTo(Principal.fromText(to), _tokenId);
-          };
+            case (?_tokenId) {
+                _addTokenTo(Principal.fromText(to), _tokenId);
+                _deleteTokenFrom(Principal.fromText(from), _tokenId);
+                _changeTokensOwnerInfo(Principal.fromText(to), _tokenId);
+            };
         };
-
+        
         return #ok("OK");
     };
+
+    // private func _changeOwnerTokenInfo(from : Principal, to : Principal, tokenId : Nat) {
+    //     assert(_isTokenExist(tokenId) and _isOwner(from, tokenId));
+
+    //     let token = _tokens.get(tokenId);
+    //     switch(token) {
+    //         case null {
+    //             assert(false);
+    //         };
+    //         case (?_token) {
+    //             _token.owner := to;
+    //         };
+    //     };
+
+    // };
 
     private func _removeTokenFrom(owner : Principal, tokenId : Nat) {
         assert (_isTokenExist(tokenId) and _isOwner(owner, tokenId));
         switch(_users.get(owner)) {
             case (?user) {
+                
                 // user.tokens := TrieSet.delete(user.tokens, tokenId, Hash.hash(tokenId), Nat.equal);
                 // for(element in TrieSet.toArray(user.tokens).vals()) {
                 //     Debug.print(Nat.toText(element));
@@ -180,6 +215,14 @@ actor {
                 assert(false);
             };
         };
+    };
+
+    public func deleteAllNFTs() : async () {
+        _userEntries := [];
+        _tokenEntries := [];
+
+        _users := HashMap.fromIter<Principal, Types.UserInfo>(_userEntries.vals(), 1, Principal.equal, Principal.hash);
+        _tokens := HashMap.fromIter<Nat, Types.TokenInfo>(_tokenEntries.vals(), 1, Nat.equal, Hash.hash);
     };
 
 
